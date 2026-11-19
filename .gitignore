@@ -1,0 +1,24 @@
+# ความลับและ Session
+.env
+.env.secret
+*.pem
+*.key
+*.bak
+discord-bot/dashboard_state.json
+
+# บังคับให้ติดตามไฟล์ตัวอย่างเสมอ
+!.env.example
+
+# ข้อมูลเซิร์ฟเวอร์และฐานข้อมูล Crafty (ขนาดใหญ่และมีข้อมูลส่วนตัว)
+crafty_servers/
+crafty_backups/
+crafty_config/
+crafty_logs/
+crafty_import/
+
+# Dependencies และไฟล์ Build
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db

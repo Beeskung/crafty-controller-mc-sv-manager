@@ -1,0 +1,5 @@
+{
+    "username": "admin",
+    "password": "yYfg4*$ppaMPC0svVoIhZtS^*I23QvA4#xU$iG@ze7trzehOYQOq3*pX^M^I#p!5",
+    "info": "This is NOT where you change your password. This file is only a means to give you a default password."
+}

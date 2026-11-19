@@ -1,0 +1,93 @@
+services:
+  crafty:
+    container_name: crafty_controller
+    image: registry.gitlab.com/crafty-controller/crafty-4:latest
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Bangkok
+    ports:
+      - "8443:8443"
+      - "25565:25565"
+      - "8100:8100" # พอร์ตสำหรับ BlueMap Live Map
+    volumes:
+      - ./crafty_backups:/crafty/backups
+      - ./crafty_logs:/crafty/logs
+      - ./crafty_servers:/crafty/servers
+      - ./crafty_config:/crafty/app/config
+      - ./import:/crafty/import
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request, ssl; urllib.request.urlopen('https://localhost:8443/', context=ssl._create_unverified_context())\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - mc_net
+
+  playit:
+    image: ghcr.io/playit-cloud/playit-agent:latest
+    container_name: playit_tunnel
+    restart: unless-stopped
+    env_file:
+      - .env.secret
+    depends_on:
+      - crafty
+    networks:
+      - mc_net
+
+  discord-bot:
+    image: node:20-alpine
+    container_name: crafty_discord_bot
+    working_dir: /app
+    restart: unless-stopped
+    env_file:
+      - .env.secret
+    environment:
+      - CRAFTY_URL=https://crafty_controller:8443
+    volumes:
+      - ./discord-bot:/app
+      - ./crafty_servers:/crafty/servers
+      - ./crafty_backups:/crafty/backups
+    command: sh -c "npm install --omit=dev && node bot.js"
+    depends_on:
+      crafty:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const fs=require('fs'); const t=Number(fs.readFileSync('/tmp/bot_healthy','utf8')); if(Date.now()-t > 90000) process.exit(1);\""]
+      interval: 45s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - mc_net
+    ports:
+      - "3005:3005"
+
+  dynamic-players:
+    image: python:3.11-slim
+    container_name: crafty_dynamic_players
+    working_dir: /app
+    restart: unless-stopped
+    env_file:
+      - .env.secret
+    environment:
+      - CRAFTY_URL=https://crafty_controller:8443
+    volumes:
+      - ./dynamic_max_players.py:/app/dynamic_max_players.py
+      - ./crafty_servers:/crafty/servers
+    command: sh -c "pip install --no-cache-dir requests urllib3 && python -u dynamic_max_players.py"
+    depends_on:
+      crafty:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import time; assert time.time() - float(open('/tmp/dyn_healthy').read()) < 60\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+    networks:
+      - mc_net
+
+networks:
+  mc_net:
+    driver: bridge
